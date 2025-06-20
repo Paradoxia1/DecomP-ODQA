@@ -12,7 +12,10 @@ from lib import (
 
 
 def get_git_hash() -> str:
-    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
+    except:
+        return "unknown-version"  # 简单返回占位符
 
 
 def main():

@@ -3,6 +3,7 @@ import re
 
 from commaqa.inference.prompt_reader import read_prompt
 from commaqa.models.gpt3generator import GPT3Generator
+from commaqa.models.gemini_generator import GeminiGenerator
 from commaqa.models.llm_client_generator import LLMClientGenerator
 
 
@@ -18,6 +19,8 @@ class LLMQAModel:
             self.prompt = None
         if gen_model == "gpt3":
             self.generator = GPT3Generator(**kwargs)
+        elif gen_model == "gemini":
+            self.generator = GeminiGenerator(**kwargs)
         elif gen_model == "llm_api":
             self.generator = LLMClientGenerator(**kwargs)
         else:

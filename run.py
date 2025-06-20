@@ -187,8 +187,13 @@ dataset_to_prompt_set_to_qids = {
 
 instantiation_schemes = {
     "no_context_qa_codex": {},
+    "no_context_qa_gemini": {},
     "no_context_qa_flan_t5": {},
     "no_decomp_context_qa_codex": {
+        "bm25_retrieval_count": ["3", "4", "5"],
+        "distractor_count": ['"1"'],
+    },
+    "no_decomp_context_qa_gemini": {
         "bm25_retrieval_count": ["3", "4", "5"],
         "distractor_count": ['"1"'],
     },
@@ -197,6 +202,10 @@ instantiation_schemes = {
         "distractor_count": ['"1"'],
     },
     "decomp_context_qa_codex": {
+        "bm25_retrieval_count": ["1", "2", "3"],
+        "distractor_count": ['"1"'],
+    },
+    "decomp_context_qa_gemini": {
         "bm25_retrieval_count": ["1", "2", "3"],
         "distractor_count": ['"1"'],
     },

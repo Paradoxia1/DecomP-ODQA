@@ -7,6 +7,7 @@ from commaqa.inference.model_search import ParticipantModel
 from commaqa.inference.utils import get_sequence_representation
 from commaqa.models.generator import LMGenerator
 from commaqa.models.gpt3generator import GPT3Generator
+from commaqa.models.gemini_generator import GeminiGenerator
 from commaqa.models.llm_client_generator import LLMClientGenerator
 from commaqa.inference.odqa import para_to_text
 
@@ -53,6 +54,8 @@ class QuestionGenParticipant(ParticipantModel):
             self.generator = LMGenerator(**kwargs)
         elif gen_model == "gpt3":
             self.generator = GPT3Generator(**kwargs)
+        elif gen_model == "gemini":
+            self.generator = GeminiGenerator(**kwargs)
         elif gen_model == "llm_api":
             self.generator = LLMClientGenerator(**kwargs)
         else:

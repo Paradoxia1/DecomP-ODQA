@@ -7,7 +7,7 @@ def main():
     parser = argparse.ArgumentParser(description="Wrapper around run.py to make experimentation easier.")
     parser.add_argument("system", type=str, choices=("decomp_context", "no_decomp_context", "no_context"))
     parser.add_argument("reader", type=str, choices=("direct", "cot"))
-    parser.add_argument("model", type=str, choices=("codex", "flan-t5-xxl", "flan-t5-xl", "flan-t5-large"))
+    parser.add_argument("model", type=str, choices=("gemini", "codex", "flan-t5-xxl", "flan-t5-xl", "flan-t5-large"))
     parser.add_argument("dataset", type=str, choices=("hotpotqa", "2wikimultihopqa", "musique"))
     parser.add_argument(
         "command",
@@ -51,7 +51,11 @@ def main():
     args = parser.parse_args()
 
     experiment_name = "_".join([args.system, args.reader, "qa", args.model.replace("-", "_"), args.dataset])
-    instantiation_scheme = args.system + "_qa_" + ("codex" if args.model.startswith("codex") else "flan_t5")
+    instantiation_scheme = args.system + "_qa_" + (
+        "codex" if args.model.startswith("codex") 
+        else "gemini" if args.model.startswith("gemini")
+        else "flan_t5"
+    )
 
     run_command_array = [
         f"python run.py {args.command} {experiment_name} --instantiation_scheme {instantiation_scheme} --prompt_set {args.prompt_set}",

@@ -3,7 +3,7 @@
 # Expected command line argument values.
 valid_systems=("decomp_context" "no_decomp_context" "no_context")
 valid_readers=("direct" "cot")
-valid_models=("codex" "flan-t5-xxl" "flan-t5-xl" "flan-t5-large")
+valid_models=("gemini" "codex" "flan-t5-xxl" "flan-t5-xl" "flan-t5-large")
 valid_datasets=("hotpotqa" "2wikimultihopqa" "musique")
 
 # Function to check if an argument is valid
