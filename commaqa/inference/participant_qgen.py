@@ -9,6 +9,7 @@ from commaqa.models.generator import LMGenerator
 from commaqa.models.gpt3generator import GPT3Generator
 from commaqa.models.gemini_generator import GeminiGenerator
 from commaqa.models.llm_client_generator import LLMClientGenerator
+from commaqa.models.fastchat_generator import FastChatGenerator
 from commaqa.inference.odqa import para_to_text
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,8 @@ class QuestionGenParticipant(ParticipantModel):
             self.generator = GeminiGenerator(**kwargs)
         elif gen_model == "llm_api":
             self.generator = LLMClientGenerator(**kwargs)
+        elif gen_model == "fastchat":
+            self.generator = FastChatGenerator(**kwargs)
         else:
             raise ValueError("Unknown gen_model: " + gen_model)
 

@@ -5,6 +5,7 @@ from commaqa.inference.prompt_reader import read_prompt
 from commaqa.models.gpt3generator import GPT3Generator
 from commaqa.models.gemini_generator import GeminiGenerator
 from commaqa.models.llm_client_generator import LLMClientGenerator
+from commaqa.models.fastchat_generator import FastChatGenerator
 
 
 class LLMQAModel:
@@ -23,6 +24,8 @@ class LLMQAModel:
             self.generator = GeminiGenerator(**kwargs)
         elif gen_model == "llm_api":
             self.generator = LLMClientGenerator(**kwargs)
+        elif gen_model == "fastchat":
+            self.generator = FastChatGenerator(**kwargs)
         else:
             raise ValueError("Unknown gen_model: " + gen_model)
 
@@ -31,7 +34,7 @@ class LLMQAModel:
         self.add_context = add_context
 
     def ask_question(self, input_question, context, context_suffix=""):
-        question_prompt = self.prompt + "\n"  # remove "\n" to remove \n\n\n delimiter.
+        question_prompt = (self.prompt or "") + "\n"  # remove "\n" to remove \n\n\n delimiter.
         if context and self.add_context:
             # TODO Hack!! Needs a better fix
             m = re.match(" *PARA_([0-9]+) (.*)", input_question)
