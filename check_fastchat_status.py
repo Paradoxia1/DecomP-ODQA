@@ -54,7 +54,7 @@ def check_ports():
     ports = {
         "Controller": ("127.0.0.1", 21001),
         "Model Worker": ("127.0.0.1", 21002),
-        "API Server": ("127.0.0.1", 8000)
+        "API Server": ("127.0.0.1", 8001)
     }
     
     for name, (host, port) in ports.items():
@@ -98,7 +98,7 @@ def check_api_server():
     
     try:
         # 检查模型列表
-        response = requests.get("http://localhost:8000/v1/models", timeout=10)
+        response = requests.get("http://localhost:8001/v1/models", timeout=10)
         if response.status_code == 200:
             models_data = response.json()
             print("✓ API Server 响应正常")
@@ -157,7 +157,7 @@ def test_model_inference(models):
             }
             
             response = requests.post(
-                "http://localhost:8000/v1/completions",
+                "http://localhost:8001/v1/completions",
                 json=payload,
                 timeout=30
             )
@@ -213,7 +213,7 @@ def check_model_files():
     """检查模型文件"""
     print("\n📁 检查模型文件...")
     
-    model_path = Path("/home/ubuntu/Test-DecomP-ODQA/RAG/Qwen3-8B")
+    model_path = Path("/root/autodl-tmp/DecomP-ODQA/RAG/Qwen3-8B")
     
     if model_path.exists():
         print(f"✓ 模型目录存在: {model_path}")
@@ -274,7 +274,7 @@ def main():
     if controller_ok and models and inference_ok:
         print("🎉 所有检查通过! FastChat 服务运行正常")
         print("\n可以开始使用 FastChat API:")
-        print("  - API 地址: http://localhost:8000")
+        print("  - API 地址: http://localhost:8001")
         print(f"  - 可用模型: {[m['id'] for m in models]}")
     else:
         print("❌ 检查发现问题，请检查上面的错误信息")

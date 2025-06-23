@@ -51,7 +51,7 @@ text_to_sentences_and_offsets 函数的主要功能是将输入的文本分割�
 # **Note**: This environment variable will not be available for Task 1 evaluations.
 
 
-CRAG_MOCK_API_URL = os.getenv("CRAG_MOCK_API_URL", "http://localhost:8000")
+CRAG_MOCK_API_URL = os.getenv("CRAG_MOCK_API_URL", "http://localhost:8001")
 
 
 #### CONFIG PARAMETERS ---
@@ -188,7 +188,7 @@ class RAGModel:
     which includes all the key components of a RAG lifecycle.
     """
     def __init__(self):
-        self.llm = OpenaiLLM(base_url="http://0.0.0.0:8000/v1")
+        self.llm = OpenaiLLM(base_url="http://0.0.0.0:8001/v1")
 
         # Load a sentence transformer model optimized for sentence embeddings, using CUDA if available.
         self.sentence_model = SentenceTransformer(
@@ -201,7 +201,7 @@ class RAGModel:
 
     def initialize_models(self):
         # Initialize Meta Llama 3 - 8B Instruct Model
-        self.model_name = "/home/ubuntu/Test-DecomP-ODQA/RAG/Qwen3-8B"
+        self.model_name = "/root/autodl-tmp/DecomP-ODQA/RAG/Qwen3-8B"
 
         if not os.path.exists(self.model_name):
             raise Exception(
@@ -227,7 +227,7 @@ class RAGModel:
         # )
         # self.tokenizer = self.llm.get_tokenizer()
         
-        self.llm = OpenaiLLM(base_url="http://0.0.0.0:8000/v1")
+        self.llm = OpenaiLLM(base_url="http://0.0.0.0:8001/v1")
 
         # Load a sentence transformer model optimized for sentence embeddings, using CUDA if available.
         self.sentence_model = SentenceTransformer(
@@ -409,7 +409,7 @@ if __name__ == "__main__":
     from torch.utils.data import DataLoader
     
     
-    data_path = "/home/ubuntu/Test-DecomP-ODQA/RAG/crag_task_1_dev_v4_release.jsonl"
+    data_path = "/root/autodl-tmp/DecomP-ODQA/RAG/crag_task_1_dev_v4_release.jsonl"
     dataset=RAGBenchmarkDataset(file_path=data_path)
     dataloader = DataLoader(
         batch_size=2,

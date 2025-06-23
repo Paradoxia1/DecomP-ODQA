@@ -6,10 +6,10 @@
 set -e  # 遇到错误立即退出
 
 # 配置参数
-MODEL_PATH="/home/ubuntu/Test-DecomP-ODQA/RAG/Qwen3-8B"
+MODEL_PATH="/root/autodl-tmp/DecomP-ODQA/RAG/Qwen3-8B"
 CONTROLLER_PORT=21001
 WORKER_PORT=21002
-API_PORT=8000
+API_PORT=8001
 
 # 颜色输出
 RED='\033[0;31m'
@@ -43,7 +43,8 @@ TOTAL_MEM=$(free -m | awk 'NR==2{printf "%.1f", $2/1024}')
 AVAILABLE_MEM=$(free -m | awk 'NR==2{printf "%.1f", $7/1024}')
 echo_info "系统内存: ${TOTAL_MEM}GB 总计, ${AVAILABLE_MEM}GB 可用"
 
-if (( $(echo "$AVAILABLE_MEM < 16" | bc -l) )); then
+# 使用 awk 进行浮点数比较，避免依赖 bc
+if awk "BEGIN {exit !($AVAILABLE_MEM < 16)}"; then
     echo_warn "可用内存 ${AVAILABLE_MEM}GB 可能不足以加载 16GB 模型"
     echo_warn "建议使用量化版本或更小的模型"
 fi
@@ -80,7 +81,7 @@ wait_for_service() {
 
 # 启动控制器 (如果没运行)
 start_controller() {
-    if curl -s "http://localhost:$CONTROLLER_PORT" >/dev/null 2>&1; then
+    if curl -s "http://127.0.0.1:$CONTROLLER_PORT" >/dev/null 2>&1; then
         echo_info "控制器已在运行"
         return 0
     fi
@@ -88,6 +89,7 @@ start_controller() {
     echo_info "启动 FastChat 控制器..."
     
     python -m fastchat.serve.controller \
+        --host 127.0.0.1 \
         --port $CONTROLLER_PORT \
         > controller.log 2>&1 &
     
@@ -95,7 +97,7 @@ start_controller() {
     echo_info "控制器已启动 (PID: $pid)"
     
     # 等待控制器启动
-    if ! wait_for_service "http://localhost:$CONTROLLER_PORT" "控制器"; then
+    if ! wait_for_service "http://127.0.0.1:$CONTROLLER_PORT" "控制器"; then
         return 1
     fi
 }
@@ -112,9 +114,9 @@ start_model_worker_cpu() {
     python -m fastchat.serve.model_worker \
         --model-path "$MODEL_PATH" \
         --device cpu \
-        --controller "http://localhost:$CONTROLLER_PORT" \
+        --controller "http://127.0.0.1:$CONTROLLER_PORT" \
         --port $WORKER_PORT \
-        --worker "http://localhost:$WORKER_PORT" \
+        --worker "http://127.0.0.1:$WORKER_PORT" \
         --load-8bit \
         > model_worker_cpu.log 2>&1 &
     
@@ -138,7 +140,7 @@ start_model_worker_cpu() {
         fi
         
         # 检查模型是否注册成功
-        if curl -s -X POST "http://localhost:$CONTROLLER_PORT/list_models" | grep -q "models"; then
+        if curl -s -X POST "http://127.0.0.1:$CONTROLLER_PORT/list_models" | grep -q "models"; then
             echo_info "✓ 模型工作器注册成功"
             return 0
         fi
@@ -162,7 +164,7 @@ start_model_worker_cpu() {
 
 # 启动 API 服务器 (如果没运行)
 start_api_server() {
-    if curl -s "http://localhost:$API_PORT/v1/models" >/dev/null 2>&1; then
+    if curl -s "http://127.0.0.1:$API_PORT/v1/models" >/dev/null 2>&1; then
         echo_info "API 服务器已在运行"
         return 0
     fi
@@ -170,16 +172,16 @@ start_api_server() {
     echo_info "启动 OpenAI API 服务器..."
     
     python -m fastchat.serve.openai_api_server \
-        --controller "http://localhost:$CONTROLLER_PORT" \
+        --controller "http://127.0.0.1:$CONTROLLER_PORT" \
         --port $API_PORT \
-        --host localhost \
+        --host 127.0.0.1 \
         > openai_api_server.log 2>&1 &
     
     local pid=$!
     echo_info "API 服务器已启动 (PID: $pid)"
     
     # 等待 API 服务器启动
-    if ! wait_for_service "http://localhost:$API_PORT/v1/models" "API 服务器"; then
+    if ! wait_for_service "http://127.0.0.1:$API_PORT/v1/models" "API 服务器"; then
         return 1
     fi
 }
@@ -190,12 +192,12 @@ show_status() {
     echo "=========================="
     echo "FastChat 服务状态 (CPU 模式)"
     echo "=========================="
-    echo "控制器:      http://localhost:$CONTROLLER_PORT"
-    echo "模型工作器:  http://localhost:$WORKER_PORT (CPU)"
-    echo "API 服务器:  http://localhost:$API_PORT"
+    echo "控制器:      http://127.0.0.1:$CONTROLLER_PORT"
+    echo "模型工作器:  http://127.0.0.1:$WORKER_PORT (CPU)"
+    echo "API 服务器:  http://127.0.0.1:$API_PORT"
     echo ""
     echo "可用模型:"
-    curl -s "http://localhost:$API_PORT/v1/models" | python -c "
+    curl -s "http://127.0.0.1:$API_PORT/v1/models" | python -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -225,11 +227,6 @@ check_dependencies() {
     if ! python -c "import fastchat" 2>/dev/null; then
         echo_error "FastChat 未安装，请运行: pip install fschat"
         exit 1
-    fi
-    
-    if ! command -v bc >/dev/null 2>&1; then
-        echo_info "安装 bc 计算器..."
-        sudo apt-get update && sudo apt-get install -y bc
     fi
     
     echo_info "依赖检查完成"

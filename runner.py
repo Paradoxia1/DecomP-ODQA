@@ -7,7 +7,7 @@ def main():
     parser = argparse.ArgumentParser(description="Wrapper around run.py to make experimentation easier.")
     parser.add_argument("system", type=str, choices=("decomp_context", "no_decomp_context", "no_context"))
     parser.add_argument("reader", type=str, choices=("direct", "cot"))
-    parser.add_argument("model", type=str, choices=("gemini", "codex", "flan-t5-xxl", "flan-t5-xl", "flan-t5-large"))
+    parser.add_argument("model", type=str, choices=("fastchat", "gemini", "codex", "flan-t5-xxl", "flan-t5-xl", "flan-t5-large"))
     parser.add_argument("dataset", type=str, choices=("hotpotqa", "2wikimultihopqa", "musique"))
     parser.add_argument(
         "command",

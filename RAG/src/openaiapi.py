@@ -23,7 +23,7 @@ class OpenaiLLM:
     Defaults to Azure OpenAI if no specific mode is provided.
     """
 
-    def __init__(self,base_url = "http://0.0.0.0:8000/v1"):
+    def __init__(self,base_url = "http://0.0.0.0:8001/v1"):
         """
         Initialize the OpenaiLLM class with the provided arguments.
 

@@ -1,6 +1,3 @@
-# FastChat 版本的配置文件模板
-# 基于原始的 decomp_context_cot_qa_codex_hotpotqa.jsonnet 修改
-
 # Set dataset:
 local dataset = "hotpotqa";
 local retrieval_corpus_name = dataset;
@@ -17,75 +14,92 @@ local prompt_reader_args = {
     "order_by_key": "qid",
     "estimated_generation_length": 300,
     "shuffle": false,
-    "model_length_limit": 4096,  # 根据你的本地模型调整
+    "model_length_limit": 8000,
 };
 local bm25_retrieval_count = 2;
 local distractor_count = 1;
 
-# FastChat 模型配置
-local fastchat_config = {
-    "model": "vicuna-7b-v1.5",  # 你的本地模型名称
-    "api_base": "http://localhost:8000/v1",  # FastChat API 地址
-    "temperature": 0,
-    "max_tokens": 300,
-    "top_p": 1,
-    "frequency_penalty": 0,
-    "presence_penalty": 0,
-    "stop": ["\n"],
-    "retry_after_n_seconds": 2,
-    "n": 1,
-    "model_tokens_limit": 4096,  # 根据你的模型调整
-    "tokenizer_model_name": "gpt2",  # 用于 token 计算的分词器
-};
-
 {
-    "dataset_reader": {
-        "type": "multi_para_rc",
-        "file_path": "processed_data/" + dataset + "/test.jsonl",
-        "para_limit": 2000,
-        "question_limit": 500,
-        "single_para_limit": 300,
-    },
-    "validation_dataset_reader": {
-        "type": "multi_para_rc",
-        "file_path": "processed_data/" + dataset + "/dev.jsonl",
-        "para_limit": 2000,
-        "question_limit": 500,
-        "single_para_limit": 300,
-    },
-    "model": {
-        "type": "decomp_context_cot_qa",
-        "subqa_model": {
-            "type": "fastchat",  # 使用 FastChat 生成器
-            "config": fastchat_config,
+    "start_state": "decompose",
+    "end_state": "[EOQ]",
+    "models": {
+        "decompose": {
+            "name": "llmqadecomp",
+            "prompt_file": "prompts/"+dataset+"/question_decomposition.txt",
+            "prompt_reader_args": prompt_reader_args,
+            "add_context": add_pinned_paras,
+            "next_model": "execute",
+            "gen_model": "fastchat",
+            "retry_after_n_seconds": 60,
+            "max_steps": 8,
+            "end_state": "[EOQ]",
         },
-        "answering_model": {
-            "type": "fastchat",  # 使用 FastChat 生成器
-            "config": fastchat_config,
+        "retrieve_odqa": {
+            "name": "llmqadecomp",
+            "prompt_file": "prompts/"+dataset+"/retrieve_odqa.txt",
+            "prompt_reader_args": prompt_reader_args,
+            "next_model": "execute",
+            "gen_model": "fastchat",
+            "retry_after_n_seconds": 60,
+            "max_steps": 8,
+            "end_state": "[EOQ]",
         },
-        "question_type": "chain_of_thought",
-        "sub_answer_type": "chain_of_thought",
-        "generate_subquestions": true,
-        "retrieve_subquestion_paras": true,
-        "prompt_file": "prompts/" + dataset + "/decomp_context_cot_qa.txt",
-        "retrieval_count": bm25_retrieval_count,
-        "sub_retrieval_count": bm25_retrieval_count,
-        "retrieval_corpus_name": retrieval_corpus_name,
-        "add_paras_from_gold_reasoning": add_pinned_paras,
+        "retrieve": {
+            "name": "retriever",
+            "retrieval_type": "bm25",
+            "retriever_host": std.extVar("RETRIEVER_HOST"),
+            "retriever_port": std.extVar("RETRIEVER_PORT"),
+            "retrieval_count": bm25_retrieval_count,
+            "source_corpus_name": retrieval_corpus_name,
+            "query_source": "last_question",
+            "document_type": "title__paragraph_text",
+            "next_model": null,
+            "end_state": "[EOQ]",
+        },
+        "singlehop_titleqa": {
+            "name": "llmtitleqa",
+            "prompt_file": "prompts/"+dataset+"/singlehop_titleqa_with_all_gold_paras_and_" + distractor_count + "_distractor.txt",
+            "prompt_reader_args": prompt_reader_args,
+            "retriever_host": std.extVar("RETRIEVER_HOST"),
+            "retriever_port": std.extVar("RETRIEVER_PORT"),
+            "retrieval_count": 1,
+            "source_corpus_name": retrieval_corpus_name,
+            "title_question_extractor_regex": ".*Titles: (.*?). Question: (.*)",
+            "return_both": true,
+            "add_context": true,
+            "gen_model": "fastchat",
+            "retry_after_n_seconds": 60,
+            "next_model": null,
+            "end_state": "[EOQ]",
+        },
+        "multihop_titleqa": {
+            "name": "llmtitleqa",
+            "prompt_file": "prompts/"+dataset+"/multihop_cot_titleqa_with_all_gold_paras_and_" + distractor_count + "_distractor.txt",
+            "prompt_reader_args": prompt_reader_args,
+            "retriever_host": std.extVar("RETRIEVER_HOST"),
+            "retriever_port": std.extVar("RETRIEVER_PORT"),
+            "retrieval_count": 1,
+            "source_corpus_name": retrieval_corpus_name,
+            "title_question_extractor_regex": ".*Titles: (.*?). Question: (.*)",
+            "answer_extractor_regex": ".* answer is:? (.*)\\.?",
+            "remove_last_fullstop": true,
+            "return_both": false,
+            "add_context": true,
+            "gen_model": "fastchat",
+            "retry_after_n_seconds": 60,
+            "next_model": null,
+            "end_state": "[EOQ]",
+        },
+        "execute": {
+            "name": "execute_router",
+            "next_model": null,
+            "end_state": "[EOQ]",
+        }
+    },
+    "reader": {
+        "name": "multi_para_rc",
+        "add_paras": false,
         "add_gold_paras": add_pinned_paras,
-        "add_pinned_paras": add_pinned_paras,
-        "max_para_num": 2,
-        "sub_max_para_num": 2,
-        "distractor_sample_size": distractor_count,
-        "sub_distractor_sample_size": distractor_count,
-        "prompt_reader_args": prompt_reader_args,
-        "sub_prompt_reader_args": prompt_reader_args,
     },
-    "data_loader": {
-        "batch_size": 1,
-        "shuffle": false
-    },
-    "trainer": {
-        "type": "no_op",
-    }
+    "prediction_type": "answer"
 }

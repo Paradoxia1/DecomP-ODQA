@@ -13,7 +13,18 @@ def get_tokenizer(model_name):
     from transformers import AutoTokenizer
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    return AutoTokenizer.from_pretrained(model_name)
+    
+    # 如果是 gpt2，使用本地路径
+    if model_name == "gpt2":
+        local_gpt2_path = "/root/autodl-tmp/DecomP-ODQA/gpt2_tokenizer"
+        return AutoTokenizer.from_pretrained(local_gpt2_path, local_files_only=True)
+    
+    # 对于其他模型，尝试本地缓存优先
+    try:
+        return AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+    except:
+        # 如果本地没有，尝试在线下载
+        return AutoTokenizer.from_pretrained(model_name)
 
 
 def read_prompt(

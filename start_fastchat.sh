@@ -6,10 +6,10 @@
 set -e  # 遇到错误立即退出
 
 # 配置参数
-MODEL_PATH="/home/ubuntu/Test-DecomP-ODQA/RAG/Qwen3-8B"
+MODEL_PATH="/root/autodl-tmp/DecomP-ODQA/RAG/Qwen3-8B"
 CONTROLLER_PORT=21001
 WORKER_PORT=21002
-API_PORT=8000
+API_PORT=8001
 
 # 日志目录
 LOG_DIR="$HOME/.cache/fastchat_logs"
@@ -132,6 +132,7 @@ start_controller() {
     echo_info "启动 FastChat 控制器..."
     
     python -m fastchat.serve.controller \
+        --host 127.0.0.1 \
         --port $CONTROLLER_PORT \
         > "$LOG_DIR/controller.log" 2>&1 &
     
@@ -140,7 +141,7 @@ start_controller() {
     echo_info "控制器已启动 (PID: $pid)"
     
     # 等待控制器启动
-    if ! wait_for_service "http://localhost:$CONTROLLER_PORT" "控制器"; then
+    if ! wait_for_service "http://127.0.0.1:$CONTROLLER_PORT" "控制器"; then
         return 1
     fi
 }
@@ -150,10 +151,11 @@ start_model_worker() {
     echo_info "启动模型工作器..."
     
     python -m fastchat.serve.model_worker \
-        --model-path "$MODEL_PATH" \
-        --controller "http://localhost:$CONTROLLER_PORT" \
+        --host 127.0.0.1 \
         --port $WORKER_PORT \
-        --worker "http://localhost:$WORKER_PORT" \
+        --model-names "Qwen3-8B" \
+        --model-path "$MODEL_PATH" \
+        --controller "http://127.0.0.1:$CONTROLLER_PORT" \
         > "$LOG_DIR/model_worker.log" 2>&1 &
     
     local pid=$!
@@ -169,7 +171,7 @@ start_model_worker() {
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
-        if curl -s -X POST "http://localhost:$CONTROLLER_PORT/list_models" | grep -q "models"; then
+        if curl -s -X POST "http://127.0.0.1:$CONTROLLER_PORT/list_models" | grep -q "models"; then
             echo_info "✓ 模型工作器注册成功"
             return 0
         fi
@@ -187,9 +189,9 @@ start_api_server() {
     echo_info "启动 OpenAI API 服务器..."
     
     python -m fastchat.serve.openai_api_server \
-        --controller "http://localhost:$CONTROLLER_PORT" \
+        --controller "http://127.0.0.1:$CONTROLLER_PORT" \
         --port $API_PORT \
-        --host localhost \
+        --host 127.0.0.1 \
         > "$LOG_DIR/api_server.log" 2>&1 &
     
     local pid=$!
@@ -197,7 +199,7 @@ start_api_server() {
     echo_info "API 服务器已启动 (PID: $pid)"
     
     # 等待 API 服务器启动
-    if ! wait_for_service "http://localhost:$API_PORT/v1/models" "API 服务器"; then
+    if ! wait_for_service "http://127.0.0.1:$API_PORT/v1/models" "API 服务器"; then
         return 1
     fi
 }
@@ -208,12 +210,12 @@ show_status() {
     echo "=========================="
     echo "FastChat 服务状态"
     echo "=========================="
-    echo "控制器:      http://localhost:$CONTROLLER_PORT"
-    echo "模型工作器:  http://localhost:$WORKER_PORT"
-    echo "API 服务器:  http://localhost:$API_PORT"
+    echo "控制器:      http://127.0.0.1:$CONTROLLER_PORT"
+    echo "模型工作器:  http://127.0.0.1:$WORKER_PORT"
+    echo "API 服务器:  http://127.0.0.1:$API_PORT"
     echo ""
     echo "测试命令:"
-    echo "curl http://localhost:$API_PORT/v1/models"
+    echo "curl http://127.0.0.1:$API_PORT/v1/models"
     echo ""
     echo "停止服务:"
     echo "./stop_fastchat.sh"

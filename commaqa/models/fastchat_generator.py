@@ -28,7 +28,7 @@ def cached_fastchat_call(
     stop: List[str],
     n: int,
     stream: bool = False,
-    api_base: str = "http://localhost:8000/v1"
+    api_base: str = "http://localhost:8001/v1"
 ):
     """缓存的 FastChat API 调用"""
     return fastchat_completion(
@@ -57,7 +57,7 @@ def fastchat_completion(
     stop: List[str],
     n: int,
     stream: bool = False,
-    api_base: str = "http://localhost:8000/v1"
+    api_base: str = "http://localhost:8001/v1"
 ):
     """调用 FastChat API"""
     url = f"{api_base}/completions"
@@ -97,7 +97,7 @@ def fastchat_call(
     stop: List[str],
     n: int,
     stream: bool = False,
-    api_base: str = "http://localhost:8000/v1"
+    api_base: str = "http://localhost:8001/v1"
 ):
     """FastChat API 调用封装，支持缓存"""
     function = cached_fastchat_call if temperature == 0 else fastchat_completion
@@ -131,8 +131,8 @@ def get_tokenizer(model_name: str = "gpt2"):
 class FastChatGenerator:
     def __init__(
         self,
-        model: str = "qwen3:8b",  # 默认模型名称
-        api_base: str = "http://localhost:8000/v1",  # FastChat API 地址
+        model: str = "Qwen3-8B",  # 默认模型名称
+        api_base: str = "http://localhost:8001/v1",  # FastChat API 地址
         temperature: float = 0,
         max_tokens: int = 300,
         top_p: float = 1,
@@ -142,7 +142,7 @@ class FastChatGenerator:
         retry_after_n_seconds: Optional[int] = None,
         n: int = 1,
         remove_method: str = "first",
-        model_tokens_limit: int = 4096,  # 模型的 token 限制
+        model_tokens_limit: int = 8000,  # 增加 token 限制以匹配配置
         tokenizer_model_name: str = "gpt2",  # 用于 token 计算的分词器
     ):
         self.model = model

@@ -7,7 +7,7 @@ set -e
 # 配置参数
 CONTROLLER_PORT=21001
 WORKER_PORT=21002
-API_PORT=8000
+API_PORT=8001
 
 # 目录
 PID_DIR="$HOME/.cache/fastchat_pids"

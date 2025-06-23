@@ -3,6 +3,7 @@ import json
 import logging
 import time
 import os
+import glob
 
 from tqdm import tqdm
 import _jsonnet
@@ -150,6 +151,30 @@ def demo_mode(args, reader, decomposer):
 def inference_mode(args, reader, decomposer, model_map, override_answer_by=None):
     print("Running inference on examples")
     qid_answer_chains = []
+    
+    # 检查是否有之前的临时文件可以恢复
+    import glob
+    temp_pattern = args.output.replace('.json', '_temp_*.json')
+    temp_files = sorted(glob.glob(temp_pattern))
+    
+    start_from_index = 0
+    if temp_files:
+        latest_temp = temp_files[-1]
+        print(f"Found previous temporary file: {latest_temp}")
+        try:
+            with open(latest_temp, 'r') as f:
+                previous_predictions = json.load(f)
+            
+            # 重构为qid_answer_chains格式
+            for qid, answer in previous_predictions.items():
+                qid_answer_chains.append((qid, answer, ""))  # 第三个元素是chain，这里用空字符串占位
+            
+            start_from_index = len(qid_answer_chains)
+            print(f"Resuming from sample {start_from_index}")
+        except Exception as e:
+            print(f"Could not load previous progress: {e}")
+            qid_answer_chains = []
+            start_from_index = 0
 
     start_time = time.time()
 
@@ -162,23 +187,52 @@ def inference_mode(args, reader, decomposer, model_map, override_answer_by=None)
         with mp.Pool(args.threads) as p:
             qid_answer_chains = p.map(decomposer.return_qid_prediction, reader.read_examples(args.input))
     else:
-        iterator = reader.read_examples(args.input)
+        examples_list = list(reader.read_examples(args.input))
+        if start_from_index > 0:
+            print(f"Skipping first {start_from_index} examples")
+            examples_list = examples_list[start_from_index:]
+        
+        iterator = examples_list
         if args.silent:
             iterator = tqdm(iterator)
+        
+        # 每处理几个样本就保存一次中间结果
+        save_interval = 5  # 每5个样本保存一次
+        processed_count = start_from_index
+        
         for example in iterator:
-            qid_answer_chains.append(
-                decomposer.return_qid_prediction(
-                    example, override_answer_by=override_answer_by, debug=args.debug, silent=args.silent
-                )
+            result = decomposer.return_qid_prediction(
+                example, override_answer_by=override_answer_by, debug=args.debug, silent=args.silent
             )
+            qid_answer_chains.append(result)
+            processed_count += 1
+            
+            # 定期保存中间结果
+            if processed_count % save_interval == 0:
+                temp_predictions = {x[0]: x[1] for x in qid_answer_chains}
+                temp_output_file = args.output.replace('.json', f'_temp_{processed_count}.json')
+                print(f"Saving intermediate results to {temp_output_file}")
+                with open(temp_output_file, "w") as temp_fp:
+                    json.dump(temp_predictions, temp_fp, indent=4)
 
     end_time = time.time()
     seconds_taken = round(end_time - start_time)
 
     predictions = {x[0]: x[1] for x in qid_answer_chains}
-    print(f"Writing predictions in {args.output}")
+    print(f"Writing final predictions in {args.output}")
     with open(args.output, "w") as output_fp:
         json.dump(predictions, output_fp, indent=4)
+    
+    # 清理临时文件
+    import glob
+    temp_pattern = args.output.replace('.json', '_temp_*.json')
+    temp_files = glob.glob(temp_pattern)
+    for temp_file in temp_files:
+        try:
+            os.remove(temp_file)
+            print(f"Removed temporary file: {temp_file}")
+        except:
+            pass
 
     ext_index = args.output.rfind(".")
 
