@@ -1,6 +1,7 @@
 import argparse
 import random
 import os
+from typing import Dict, List
 
 from tqdm import tqdm
 from lib import read_jsonl, write_jsonl, find_matching_paragraph_text
@@ -11,7 +12,7 @@ random.seed(13370)  # Don't change this.
 def main():
     parser = argparse.ArgumentParser(description="Save and sample data")
     parser.add_argument(
-        "dataset_name", type=str, help="dataset name.", choices=("hotpotqa", "2wikimultihopqa", "musique")
+        "dataset_name", type=str, help="dataset name.", choices=("hotpotqa", "2wikimultihopqa", "musique", "crag")
     )
     parser.add_argument("set_name", type=str, help="set name.", choices=("dev", "test"))
     args = parser.parse_args()
@@ -32,7 +33,8 @@ def main():
     instances = random.sample(instances, sample_size)
 
     for instance in tqdm(instances):
-        for context in instance["contexts"]:
+        contexts: List[Dict] = instance["contexts"]
+        for context in contexts:
             if context in instance.get("pinned_contexts", []):
                 continue
 

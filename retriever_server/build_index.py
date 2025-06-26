@@ -2,7 +2,7 @@
 Build ES (Elasticsearch) BM25 Index.
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import json
 import argparse
 from elasticsearch import Elasticsearch
@@ -27,7 +27,7 @@ def hash_object(o: Any) -> str:
         return base58.b58encode(m.digest()).decode()
 
 
-def make_hotpotqa_documents(elasticsearch_index: str, metadata: Dict = None):
+def make_hotpotqa_documents(elasticsearch_index: str, metadata: Optional[Dict] = None):
     raw_glob_filepath = os.path.join("raw_data", "hotpotqa", "wikpedia-paragraphs", "*", "wiki_*.bz2")
     metadata = metadata or {"idx": 1}
     assert "idx" in metadata
@@ -61,7 +61,7 @@ def make_hotpotqa_documents(elasticsearch_index: str, metadata: Dict = None):
             metadata["idx"] += 1
 
 
-def make_2wikimultihopqa_documents(elasticsearch_index: str, metadata: Dict = None):
+def make_2wikimultihopqa_documents(elasticsearch_index: str, metadata: Optional[Dict] = None):
     raw_filepaths = [
         os.path.join("raw_data", "2wikimultihopqa", "train.json"),
         os.path.join("raw_data", "2wikimultihopqa", "dev.json"),
@@ -107,7 +107,7 @@ def make_2wikimultihopqa_documents(elasticsearch_index: str, metadata: Dict = No
                     metadata["idx"] += 1
 
 
-def make_musique_documents(elasticsearch_index: str, metadata: Dict = None):
+def make_musique_documents(elasticsearch_index: str, metadata: Optional[Dict] = None):
     raw_filepaths = [
         os.path.join("raw_data", "musique", "musique_ans_v1.0_dev.jsonl"),
         os.path.join("raw_data", "musique", "musique_ans_v1.0_test.jsonl"),
@@ -159,13 +159,76 @@ def make_musique_documents(elasticsearch_index: str, metadata: Dict = None):
                     metadata["idx"] += 1
 
 
+def make_crag_documents(elasticsearch_index: str, metadata: Optional[Dict] = None):
+    """
+    Generates Elasticsearch documents from the raw CRAG dataset.
+    This function reads the original CRAG data, extracts all unique web pages
+    from the 'search_results' of all questions, and prepares them for indexing.
+    """
+    # This should point to your ORIGINAL, UNPROCESSED CRAG data file.
+    # Please adjust the filenames as necessary.
+    raw_filepaths = [
+        os.path.join("raw_data", "crag", "train.jsonl"),
+        os.path.join("raw_data", "crag", "dev.jsonl"),
+        os.path.join("raw_data", "crag", "test.jsonl"),
+    ]
+    metadata = metadata or {"idx": 1}
+    assert "idx" in metadata
+
+    used_full_ids = set()
+    for raw_filepath in raw_filepaths:
+        if not os.path.exists(raw_filepath):
+            print(f"Warning: Raw data file not found, skipping: {raw_filepath}")
+            continue
+
+        with open(raw_filepath, "r") as file:
+            for line in tqdm(file.readlines(), desc=f"Processing raw CRAG file: {raw_filepath}"):
+                if not line.strip():
+                    continue
+                # We are reading the raw CRAG data here
+                instance = json.loads(line)
+
+                # Iterate through the search results which form our corpus
+                for search_result in instance.get("search_results", []):
+                    title = search_result.get("page_name", "No Title").strip()
+
+                    # Here you might want to parse HTML to get clean text
+                    # For now, we'll use the raw HTML as paragraph_text
+                    paragraph_text = search_result.get("page_result", "").strip()
+
+                    # Create a unique ID for the document to avoid duplicates
+                    full_id = hash_object(" ".join([title, paragraph_text]))
+                    if full_id in used_full_ids:
+                        continue
+
+                    used_full_ids.add(full_id)
+                    id_ = full_id[:32]
+
+                    es_paragraph = {
+                        "id": id_,
+                        "title": title,
+                        "paragraph_index": 0,  # Index is 0 as we treat each page as one doc
+                        "paragraph_text": paragraph_text,
+                        "url": search_result.get("page_url", ""),
+                        "is_abstract": True,  # Assuming each page is a primary document
+                    }
+                    document = {
+                        "_op_type": "create",
+                        "_index": elasticsearch_index,
+                        "_id": metadata["idx"],
+                        "_source": es_paragraph,
+                    }
+                    yield (document)
+                    metadata["idx"] += 1
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Index paragraphs in Elasticsearch")
     parser.add_argument(
         "dataset_name",
         help="name of the dataset",
         type=str,
-        choices=("hotpotqa", "2wikimultihopqa", "musique"),
+        choices=("hotpotqa", "2wikimultihopqa", "musique", "crag"),
     )
     parser.add_argument(
         "--force",
@@ -220,7 +283,7 @@ if __name__ == "__main__":
 
     # create index
     print("Creating Index ...")
-    es.indices.create(index=elasticsearch_index, ignore=400, body=paragraphs_index_settings)
+    es.indices.create(index=elasticsearch_index, body=paragraphs_index_settings)
 
     if args.dataset_name == "hotpotqa":
         make_documents = make_hotpotqa_documents
@@ -228,6 +291,8 @@ if __name__ == "__main__":
         make_documents = make_2wikimultihopqa_documents
     elif args.dataset_name == "musique":
         make_documents = make_musique_documents
+    elif args.dataset_name == "crag":
+        make_documents = make_crag_documents
     else:
         raise Exception(f"Unknown dataset_name {args.dataset_name}")
 
