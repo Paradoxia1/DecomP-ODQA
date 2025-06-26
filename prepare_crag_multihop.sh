@@ -43,7 +43,7 @@ python processing_scripts/process_crag.py convert test
 echo ">>> [Step 4/4] Building Elasticsearch index for the CRAG dataset..."
 # Note: This assumes 'build_index.py' accepts a '--dataset' argument.
 # Please verify the exact argument name if this step fails.
-python retriever_server/build_index.py --dataset crag
+python retriever_server/build_index.py crag
 
 echo ">>> All steps completed successfully!"
 echo "CRAG 'multi-hop' dataset is now ready for use."
